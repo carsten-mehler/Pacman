@@ -1,8 +1,16 @@
 const TILE_SIZE = 28;
-const SHOTS_PER_GAME = 5;
+const SHOTS_PER_LEVEL = 5;
 const PROJECTILE_DELAY = 45;
+const POWER_PELLET_DURATION = 8000;
 
-const MAZE_TEMPLATE = [
+const BASE_POWER_PELLETS = [
+  { x: 1, y: 3 },
+  { x: 17, y: 3 },
+  { x: 1, y: 16 },
+  { x: 17, y: 16 },
+];
+
+const BASE_MAZE_TEMPLATE = [
   "###################",
   "#........#........#",
   "#.##.###.#.###.##.#",
@@ -26,6 +34,202 @@ const MAZE_TEMPLATE = [
   "#.................#",
   "###################",
 ];
+
+const LEVEL_DEFINITIONS = [
+  {
+    name: "Classic",
+    openings: [],
+    powerPellets: BASE_POWER_PELLETS,
+    powerDuration: POWER_PELLET_DURATION,
+  },
+  {
+    name: "Center Gate",
+    openings: [
+      { x: 9, y: 1 },
+      { x: 9, y: 2 },
+      { x: 9, y: 3 },
+    ],
+    powerPellets: [
+      { x: 4, y: 4 },
+      { x: 14, y: 4 },
+      { x: 4, y: 18 },
+      { x: 14, y: 18 },
+    ],
+    powerDuration: POWER_PELLET_DURATION - 200,
+  },
+  {
+    name: "Lower Gate",
+    openings: [
+      { x: 9, y: 14 },
+      { x: 9, y: 15 },
+      { x: 9, y: 16 },
+    ],
+    powerPellets: [
+      { x: 8, y: 4 },
+      { x: 10, y: 4 },
+      { x: 8, y: 18 },
+      { x: 10, y: 18 },
+    ],
+    powerDuration: POWER_PELLET_DURATION - 400,
+  },
+  {
+    name: "Side Doors",
+    openings: [
+      { x: 5, y: 5 },
+      { x: 13, y: 5 },
+      { x: 5, y: 18 },
+      { x: 13, y: 18 },
+    ],
+    powerPellets: [
+      { x: 1, y: 1 },
+      { x: 17, y: 1 },
+      { x: 1, y: 20 },
+      { x: 17, y: 20 },
+    ],
+    powerDuration: POWER_PELLET_DURATION - 600,
+  },
+  {
+    name: "Corner Loops",
+    openings: [
+      { x: 2, y: 2 },
+      { x: 3, y: 2 },
+      { x: 15, y: 2 },
+      { x: 16, y: 2 },
+      { x: 2, y: 19 },
+      { x: 3, y: 19 },
+      { x: 15, y: 19 },
+      { x: 16, y: 19 },
+    ],
+    powerPellets: [
+      { x: 4, y: 6 },
+      { x: 14, y: 6 },
+      { x: 4, y: 14 },
+      { x: 14, y: 14 },
+    ],
+    powerDuration: POWER_PELLET_DURATION - 800,
+  },
+  {
+    name: "Crossroads",
+    openings: [
+      { x: 7, y: 5 },
+      { x: 11, y: 5 },
+      { x: 7, y: 17 },
+      { x: 11, y: 17 },
+      { x: 9, y: 7 },
+      { x: 9, y: 18 },
+    ],
+    powerPellets: [
+      { x: 6, y: 4 },
+      { x: 12, y: 4 },
+      { x: 6, y: 20 },
+      { x: 12, y: 20 },
+    ],
+    powerDuration: POWER_PELLET_DURATION - 1000,
+  },
+  {
+    name: "Tunnel Web",
+    openings: [
+      { x: 3, y: 8 },
+      { x: 15, y: 8 },
+      { x: 3, y: 12 },
+      { x: 15, y: 12 },
+      { x: 5, y: 9 },
+      { x: 13, y: 9 },
+    ],
+    powerPellets: [
+      { x: 1, y: 4 },
+      { x: 17, y: 4 },
+      { x: 4, y: 20 },
+      { x: 14, y: 20 },
+    ],
+    powerDuration: POWER_PELLET_DURATION - 1200,
+  },
+  {
+    name: "Ghost House",
+    openings: [
+      { x: 7, y: 9 },
+      { x: 11, y: 9 },
+      { x: 7, y: 11 },
+      { x: 8, y: 11 },
+      { x: 10, y: 11 },
+      { x: 11, y: 11 },
+    ],
+    powerPellets: [
+      { x: 8, y: 8 },
+      { x: 10, y: 8 },
+      { x: 8, y: 12 },
+      { x: 10, y: 12 },
+    ],
+    powerDuration: POWER_PELLET_DURATION - 1400,
+  },
+  {
+    name: "Outer Rings",
+    openings: [
+      { x: 5, y: 7 },
+      { x: 13, y: 7 },
+      { x: 5, y: 13 },
+      { x: 13, y: 13 },
+      { x: 7, y: 7 },
+      { x: 11, y: 7 },
+      { x: 7, y: 13 },
+      { x: 11, y: 13 },
+    ],
+    powerPellets: [
+      { x: 4, y: 8 },
+      { x: 14, y: 8 },
+      { x: 4, y: 12 },
+      { x: 14, y: 12 },
+    ],
+    powerDuration: POWER_PELLET_DURATION - 1600,
+  },
+  {
+    name: "Final Maze",
+    openings: [
+      { x: 9, y: 1 },
+      { x: 9, y: 2 },
+      { x: 9, y: 3 },
+      { x: 9, y: 14 },
+      { x: 9, y: 15 },
+      { x: 9, y: 16 },
+      { x: 5, y: 5 },
+      { x: 13, y: 5 },
+      { x: 5, y: 18 },
+      { x: 13, y: 18 },
+      { x: 7, y: 9 },
+      { x: 11, y: 9 },
+      { x: 7, y: 11 },
+      { x: 11, y: 11 },
+    ],
+    powerPellets: [
+      { x: 9, y: 4 },
+      { x: 9, y: 8 },
+      { x: 9, y: 12 },
+      { x: 9, y: 20 },
+    ],
+    powerDuration: POWER_PELLET_DURATION - 1800,
+  },
+];
+
+function placeTiles(maze, tiles, tileValue) {
+  for (const { x, y } of tiles) {
+    if (maze[y] && x >= 0 && x < maze[y].length) {
+      maze[y][x] = tileValue;
+    }
+  }
+}
+
+function buildLevelMaze(level) {
+  const maze = BASE_MAZE_TEMPLATE.map((row) => row.split(""));
+
+  placeTiles(maze, BASE_POWER_PELLETS, ".");
+  placeTiles(maze, level.openings, ".");
+  placeTiles(maze, level.powerPellets, "o");
+
+  return maze.map((row) => row.join(""));
+}
+
+const LEVEL_MAZES = LEVEL_DEFINITIONS.map(buildLevelMaze);
+const MAX_LEVEL = LEVEL_DEFINITIONS.length;
 
 const DIRECTIONS = {
   left: { x: -1, y: 0, angle: Math.PI },
@@ -55,14 +259,15 @@ const levelNode = document.querySelector("#level");
 const livesNode = document.querySelector("#lives");
 const pelletsNode = document.querySelector("#pellets");
 const shotsNode = document.querySelector("#shots");
+const powerNode = document.querySelector("#power");
 const messageNode = document.querySelector("#message");
 const startBtn = document.querySelector("#startBtn");
 const pauseBtn = document.querySelector("#pauseBtn");
 const shootBtn = document.querySelector("#shootBtn");
 const restartBtn = document.querySelector("#restartBtn");
 
-const rows = MAZE_TEMPLATE.length;
-const cols = MAZE_TEMPLATE[0].length;
+const rows = BASE_MAZE_TEMPLATE.length;
+const cols = BASE_MAZE_TEMPLATE[0].length;
 const boardWidth = cols * TILE_SIZE;
 const boardHeight = rows * TILE_SIZE;
 
@@ -71,7 +276,9 @@ const state = {
   level: 1,
   score: 0,
   lives: 3,
-  shotsRemaining: SHOTS_PER_GAME,
+  shotsRemaining: SHOTS_PER_LEVEL,
+  levelConfig: LEVEL_DEFINITIONS[0],
+  maze: LEVEL_MAZES[0],
   pellets: [],
   pelletCount: 0,
   projectiles: [],
@@ -94,8 +301,21 @@ function configureCanvas() {
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
 }
 
+function getLevelIndex() {
+  return Math.max(0, Math.min(MAX_LEVEL - 1, state.level - 1));
+}
+
+function loadCurrentLevel() {
+  const levelIndex = getLevelIndex();
+  state.levelConfig = LEVEL_DEFINITIONS[levelIndex];
+  state.maze = LEVEL_MAZES[levelIndex];
+  createPellets();
+  resetPositions();
+  clearSpawnTiles();
+}
+
 function createPellets() {
-  state.pellets = MAZE_TEMPLATE.map((row) => row.split(""));
+  state.pellets = state.maze.map((row) => row.split(""));
   state.pelletCount = 0;
 
   for (let y = 0; y < rows; y += 1) {
@@ -135,23 +355,25 @@ function resetGame() {
   state.level = 1;
   state.score = 0;
   state.lives = 3;
-  state.shotsRemaining = SHOTS_PER_GAME;
+  state.shotsRemaining = SHOTS_PER_LEVEL;
   state.inactiveGhostNames = new Set();
   state.message = "Ready";
-  createPellets();
-  resetPositions();
-  clearSpawnTiles();
+  loadCurrentLevel();
   updateHud();
 }
 
 function nextLevel() {
+  if (state.level >= MAX_LEVEL) {
+    setMode("won", `All ${MAX_LEVEL} levels cleared`);
+    return;
+  }
+
   state.level += 1;
   state.mode = "ready";
-  state.message = `Level ${state.level}`;
+  state.shotsRemaining = SHOTS_PER_LEVEL;
   state.inactiveGhostNames = new Set();
-  createPellets();
-  resetPositions();
-  clearSpawnTiles();
+  loadCurrentLevel();
+  state.message = `Level ${state.level}: ${state.levelConfig.name}`;
   updateHud();
 }
 
@@ -161,15 +383,49 @@ function setMode(mode, message) {
   updateHud();
 }
 
+function formatPowerCountdown() {
+  if (state.powerTimer <= 0) {
+    return "Ready";
+  }
+
+  return `${Math.ceil(state.powerTimer / 1000)}s`;
+}
+
+function getHudMessage() {
+  if (state.mode === "playing" && state.powerTimer > 0) {
+    return `${state.message} - ${formatPowerCountdown()} left`;
+  }
+
+  return state.message;
+}
+
+function getStartButtonLabel() {
+  if (state.mode === "paused") {
+    return "Resume";
+  }
+
+  if (state.mode === "level-clear") {
+    return "Next";
+  }
+
+  if (state.mode === "lost" || state.mode === "won") {
+    return "Restart";
+  }
+
+  return "Start";
+}
+
 function updateHud() {
   scoreNode.textContent = state.score.toLocaleString();
   levelNode.textContent = String(state.level);
   livesNode.textContent = String(state.lives);
   pelletsNode.textContent = String(state.pelletCount);
   shotsNode.textContent = String(state.shotsRemaining);
-  messageNode.textContent = state.message;
-  startBtn.textContent = state.mode === "paused" ? "Resume" : "Start";
-  pauseBtn.disabled = state.mode === "lost" || state.mode === "won";
+  powerNode.textContent = formatPowerCountdown();
+  powerNode.classList.toggle("active", state.powerTimer > 0);
+  messageNode.textContent = getHudMessage();
+  startBtn.textContent = getStartButtonLabel();
+  pauseBtn.disabled = state.mode !== "playing" && state.mode !== "paused";
   shootBtn.disabled = state.mode !== "playing" || state.shotsRemaining <= 0;
 }
 
@@ -190,7 +446,7 @@ function tileAt(x, y) {
     return "#";
   }
 
-  return MAZE_TEMPLATE[y][normalizeX(x)];
+  return state.maze[y][normalizeX(x)];
 }
 
 function isWall(x, y) {
@@ -289,12 +545,16 @@ function eatCurrentTile() {
     state.score += 50;
     state.pellets[y][x] = " ";
     state.pelletCount -= 1;
-    state.powerTimer = 8000;
-    state.message = "Power pellet";
+    state.powerTimer = state.levelConfig.powerDuration;
+    state.message = "Ghosts vulnerable";
   }
 
   if (state.pelletCount === 0) {
-    setMode("won", "Maze cleared");
+    if (state.level >= MAX_LEVEL) {
+      setMode("won", `All ${MAX_LEVEL} levels cleared`);
+    } else {
+      setMode("level-clear", `Level ${state.level} cleared`);
+    }
   }
 }
 
@@ -481,6 +741,7 @@ function update(delta) {
     return;
   }
 
+  const hadPower = state.powerTimer > 0;
   state.powerTimer = Math.max(0, state.powerTimer - delta);
   state.mouthTime += delta;
   state.pacAccumulator += delta;
@@ -505,7 +766,7 @@ function update(delta) {
     state.projectileAccumulator -= PROJECTILE_DELAY;
   }
 
-  if (state.powerTimer <= 0 && state.message === "Power pellet") {
+  if (hadPower && state.powerTimer <= 0) {
     state.message = "Go";
   }
 
@@ -533,7 +794,7 @@ function drawBoard(time) {
 
   for (let y = 0; y < rows; y += 1) {
     for (let x = 0; x < cols; x += 1) {
-      const tile = MAZE_TEMPLATE[y][x];
+      const tile = state.maze[y][x];
       const px = x * TILE_SIZE;
       const py = y * TILE_SIZE;
 
@@ -681,9 +942,14 @@ function drawOverlay() {
   ctx.textBaseline = "middle";
   ctx.fillText(state.message, boardWidth / 2, boardHeight / 2 - 8);
 
+  if (state.mode === "level-clear") {
+    ctx.font = "700 16px system-ui, sans-serif";
+    ctx.fillText("Start loads next level", boardWidth / 2, boardHeight / 2 + 30);
+  }
+
   if (state.mode === "won") {
     ctx.font = "700 16px system-ui, sans-serif";
-    ctx.fillText("Start continues", boardWidth / 2, boardHeight / 2 + 30);
+    ctx.fillText("Start restarts", boardWidth / 2, boardHeight / 2 + 30);
   }
 }
 
@@ -708,11 +974,11 @@ function frame(time) {
 }
 
 function startOrResume() {
-  if (state.mode === "lost") {
+  if (state.mode === "lost" || state.mode === "won") {
     resetGame();
   }
 
-  if (state.mode === "won") {
+  if (state.mode === "level-clear") {
     nextLevel();
   }
 

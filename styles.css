@@ -126,6 +126,10 @@ h1 {
   line-height: 1;
 }
 
+.stats dd.active {
+  color: var(--accent);
+}
+
 .state-message {
   min-height: 3.2rem;
   margin: 0;
