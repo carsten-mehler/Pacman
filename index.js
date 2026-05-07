@@ -1,4 +1,6 @@
-const TILE_SIZE = 24;
+const TILE_SIZE = 28;
+const SHOTS_PER_GAME = 5;
+const PROJECTILE_DELAY = 45;
 
 const MAZE_TEMPLATE = [
   "###################",
@@ -52,9 +54,11 @@ const scoreNode = document.querySelector("#score");
 const levelNode = document.querySelector("#level");
 const livesNode = document.querySelector("#lives");
 const pelletsNode = document.querySelector("#pellets");
+const shotsNode = document.querySelector("#shots");
 const messageNode = document.querySelector("#message");
 const startBtn = document.querySelector("#startBtn");
 const pauseBtn = document.querySelector("#pauseBtn");
+const shootBtn = document.querySelector("#shootBtn");
 const restartBtn = document.querySelector("#restartBtn");
 
 const rows = MAZE_TEMPLATE.length;
@@ -67,14 +71,18 @@ const state = {
   level: 1,
   score: 0,
   lives: 3,
+  shotsRemaining: SHOTS_PER_GAME,
   pellets: [],
   pelletCount: 0,
+  projectiles: [],
+  inactiveGhostNames: new Set(),
   powerTimer: 0,
   pacman: null,
   ghosts: [],
   lastTime: 0,
   pacAccumulator: 0,
   ghostAccumulator: 0,
+  projectileAccumulator: 0,
   mouthTime: 0,
   message: "Ready",
 };
@@ -112,12 +120,14 @@ function resetPositions() {
     x: ghost.home.x,
     y: ghost.home.y,
     dir: ["left", "right", "up", "down"][index],
-    eaten: false,
+    inactive: state.inactiveGhostNames.has(ghost.name),
   }));
 
+  state.projectiles = [];
   state.powerTimer = 0;
   state.pacAccumulator = 0;
   state.ghostAccumulator = 0;
+  state.projectileAccumulator = 0;
 }
 
 function resetGame() {
@@ -125,6 +135,8 @@ function resetGame() {
   state.level = 1;
   state.score = 0;
   state.lives = 3;
+  state.shotsRemaining = SHOTS_PER_GAME;
+  state.inactiveGhostNames = new Set();
   state.message = "Ready";
   createPellets();
   resetPositions();
@@ -136,6 +148,7 @@ function nextLevel() {
   state.level += 1;
   state.mode = "ready";
   state.message = `Level ${state.level}`;
+  state.inactiveGhostNames = new Set();
   createPellets();
   resetPositions();
   clearSpawnTiles();
@@ -153,9 +166,11 @@ function updateHud() {
   levelNode.textContent = String(state.level);
   livesNode.textContent = String(state.lives);
   pelletsNode.textContent = String(state.pelletCount);
+  shotsNode.textContent = String(state.shotsRemaining);
   messageNode.textContent = state.message;
   startBtn.textContent = state.mode === "paused" ? "Resume" : "Start";
   pauseBtn.disabled = state.mode === "lost" || state.mode === "won";
+  shootBtn.disabled = state.mode !== "playing" || state.shotsRemaining <= 0;
 }
 
 function normalizeX(x) {
@@ -226,6 +241,38 @@ function setPacmanDirection(direction) {
   if (state.mode === "ready") {
     setMode("playing", "Go");
   }
+}
+
+function shoot() {
+  if (state.mode !== "playing") {
+    return;
+  }
+
+  if (state.shotsRemaining <= 0) {
+    state.message = "No shots left";
+    updateHud();
+    return;
+  }
+
+  state.shotsRemaining -= 1;
+
+  const delta = DIRECTIONS[state.pacman.dir];
+  const projectile = {
+    x: normalizeX(state.pacman.x + delta.x),
+    y: state.pacman.y + delta.y,
+    dir: state.pacman.dir,
+  };
+
+  if (isWall(projectile.x, projectile.y)) {
+    state.message = "Shot blocked";
+    updateHud();
+    return;
+  }
+
+  state.projectiles.push(projectile);
+  state.message = `${state.shotsRemaining} shots left`;
+  checkProjectileHits();
+  updateHud();
 }
 
 function eatCurrentTile() {
@@ -334,6 +381,10 @@ function chooseGhostDirection(ghost) {
 
 function moveGhosts() {
   for (const ghost of state.ghosts) {
+    if (ghost.inactive) {
+      continue;
+    }
+
     const direction = chooseGhostDirection(ghost);
     moveEntity(ghost, direction);
   }
@@ -362,12 +413,23 @@ function eatGhost(ghost) {
   updateHud();
 }
 
+function hitGhost(ghost) {
+  ghost.inactive = true;
+  state.inactiveGhostNames.add(ghost.name);
+  state.score += 300;
+  state.message = `${ghost.name} hit`;
+}
+
 function checkCollisions() {
   if (state.mode !== "playing" && state.mode !== "ready") {
     return;
   }
 
   for (const ghost of state.ghosts) {
+    if (ghost.inactive) {
+      continue;
+    }
+
     if (ghost.x === state.pacman.x && ghost.y === state.pacman.y) {
       if (state.powerTimer > 0) {
         eatGhost(ghost);
@@ -379,6 +441,41 @@ function checkCollisions() {
   }
 }
 
+function checkProjectileHits() {
+  state.projectiles = state.projectiles.filter((projectile) => {
+    for (const ghost of state.ghosts) {
+      if (ghost.inactive) {
+        continue;
+      }
+
+      if (ghost.x === projectile.x && ghost.y === projectile.y) {
+        hitGhost(ghost);
+        return false;
+      }
+    }
+
+    return true;
+  });
+}
+
+function moveProjectiles() {
+  state.projectiles = state.projectiles.filter((projectile) => {
+    const delta = DIRECTIONS[projectile.dir];
+    const nextX = normalizeX(projectile.x + delta.x);
+    const nextY = projectile.y + delta.y;
+
+    if (isWall(nextX, nextY)) {
+      return false;
+    }
+
+    projectile.x = nextX;
+    projectile.y = nextY;
+    return true;
+  });
+
+  checkProjectileHits();
+}
+
 function update(delta) {
   if (state.mode !== "playing") {
     return;
@@ -388,9 +485,10 @@ function update(delta) {
   state.mouthTime += delta;
   state.pacAccumulator += delta;
   state.ghostAccumulator += delta;
+  state.projectileAccumulator += delta;
 
   const pacDelay = Math.max(88, 140 - state.level * 5);
-  const ghostDelay = Math.max(105, (state.powerTimer > 0 ? 190 : 165) - state.level * 5);
+  const ghostDelay = Math.max(145, (state.powerTimer > 0 ? 250 : 225) - state.level * 4);
 
   while (state.pacAccumulator >= pacDelay && state.mode === "playing") {
     movePacman();
@@ -400,6 +498,11 @@ function update(delta) {
   while (state.ghostAccumulator >= ghostDelay && state.mode === "playing") {
     moveGhosts();
     state.ghostAccumulator -= ghostDelay;
+  }
+
+  while (state.projectileAccumulator >= PROJECTILE_DELAY && state.mode === "playing") {
+    moveProjectiles();
+    state.projectileAccumulator -= PROJECTILE_DELAY;
   }
 
   if (state.powerTimer <= 0 && state.message === "Power pellet") {
@@ -491,7 +594,27 @@ function drawPacman() {
   ctx.fill();
 }
 
+function drawProjectiles() {
+  for (const projectile of state.projectiles) {
+    const x = projectile.x * TILE_SIZE + TILE_SIZE / 2;
+    const y = projectile.y * TILE_SIZE + TILE_SIZE / 2;
+    const delta = DIRECTIONS[projectile.dir];
+
+    ctx.beginPath();
+    ctx.strokeStyle = "#25d7a1";
+    ctx.lineWidth = 4;
+    ctx.lineCap = "round";
+    ctx.moveTo(x - delta.x * TILE_SIZE * 0.22, y - delta.y * TILE_SIZE * 0.22);
+    ctx.lineTo(x + delta.x * TILE_SIZE * 0.22, y + delta.y * TILE_SIZE * 0.22);
+    ctx.stroke();
+  }
+}
+
 function drawGhost(ghost) {
+  if (ghost.inactive) {
+    return;
+  }
+
   const x = ghost.x * TILE_SIZE + TILE_SIZE / 2;
   const y = ghost.y * TILE_SIZE + TILE_SIZE / 2;
   const left = x - TILE_SIZE * 0.42;
@@ -566,6 +689,7 @@ function drawOverlay() {
 
 function draw(time) {
   drawBoard(time);
+  drawProjectiles();
   drawPacman();
 
   for (const ghost of state.ghosts) {
@@ -632,7 +756,13 @@ function handleKeydown(event) {
 
   if (event.key === " " || event.key === "Enter") {
     event.preventDefault();
-    startOrResume();
+    if (event.key === " ") {
+      if (!event.repeat) {
+        shoot();
+      }
+    } else {
+      startOrResume();
+    }
   }
 
   if (event.key === "p" || event.key === "P") {
@@ -645,6 +775,7 @@ function bindControls() {
   document.addEventListener("keydown", handleKeydown);
   startBtn.addEventListener("click", startOrResume);
   pauseBtn.addEventListener("click", togglePause);
+  shootBtn.addEventListener("click", shoot);
   restartBtn.addEventListener("click", restart);
 
   document.querySelectorAll("[data-dir]").forEach((button) => {

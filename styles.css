@@ -57,7 +57,7 @@ button {
 }
 
 #game {
-  width: min(100%, 456px);
+  width: min(100%, 532px);
   height: auto;
   aspect-ratio: 19 / 22;
   display: block;
@@ -142,7 +142,7 @@ h1 {
 
 .actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
 
