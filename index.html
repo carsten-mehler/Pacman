@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pac-Man</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="game-area" aria-label="Pac-Man game board">
+        <canvas id="game" aria-label="Pac-Man maze" role="img"></canvas>
+
+        <div class="touch-pad" aria-label="Touch controls">
+          <button class="touch-button touch-up" type="button" data-dir="up" aria-label="Move up" title="Move up">^</button>
+          <button class="touch-button touch-left" type="button" data-dir="left" aria-label="Move left" title="Move left">&lt;</button>
+          <button class="touch-button touch-down" type="button" data-dir="down" aria-label="Move down" title="Move down">v</button>
+          <button class="touch-button touch-right" type="button" data-dir="right" aria-label="Move right" title="Move right">&gt;</button>
+        </div>
+      </section>
+
+      <aside class="side-panel" aria-label="Game status and actions">
+        <div>
+          <p class="eyebrow">Arcade</p>
+          <h1>Pac-Man</h1>
+        </div>
+
+        <dl class="stats">
+          <div>
+            <dt>Score</dt>
+            <dd id="score">0</dd>
+          </div>
+          <div>
+            <dt>Level</dt>
+            <dd id="level">1</dd>
+          </div>
+          <div>
+            <dt>Lives</dt>
+            <dd id="lives">3</dd>
+          </div>
+          <div>
+            <dt>Pellets</dt>
+            <dd id="pellets">0</dd>
+          </div>
+        </dl>
+
+        <p class="state-message" id="message">Ready</p>
+
+        <div class="actions">
+          <button class="action-button primary" type="button" id="startBtn">Start</button>
+          <button class="action-button" type="button" id="pauseBtn">Pause</button>
+          <button class="action-button" type="button" id="restartBtn">Restart</button>
+        </div>
+      </aside>
+    </main>
+
+    <script src="index.js"></script>
+  </body>
+</html>

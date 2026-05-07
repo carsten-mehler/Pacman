@@ -1,0 +1,10 @@
+{
+  "name": "pacman",
+  "version": "1.0.0",
+  "description": "Static Pac-Man browser game",
+  "main": "index.js",
+  "scripts": {
+    "check": "node --check index.js"
+  },
+  "private": true
+}
