@@ -2,6 +2,8 @@ const TILE_SIZE = 28;
 const SHOTS_PER_LEVEL = 5;
 const PROJECTILE_DELAY = 45;
 const POWER_PELLET_DURATION = 8000;
+const HIGHSCORE_KEY = "pacmanHighscores";
+const MAX_HIGHSCORES = 10;
 
 const BASE_POWER_PELLETS = [
   { x: 1, y: 3 },
@@ -260,11 +262,24 @@ const livesNode = document.querySelector("#lives");
 const pelletsNode = document.querySelector("#pellets");
 const shotsNode = document.querySelector("#shots");
 const powerNode = document.querySelector("#power");
+const trophiesNode = document.querySelector("#trophies");
 const messageNode = document.querySelector("#message");
 const startBtn = document.querySelector("#startBtn");
 const pauseBtn = document.querySelector("#pauseBtn");
 const shootBtn = document.querySelector("#shootBtn");
+const touchShootBtn = document.querySelector("#touchShootBtn");
 const restartBtn = document.querySelector("#restartBtn");
+const completionScreen = document.querySelector("#completionScreen");
+const completionEyebrow = document.querySelector("#completionEyebrow");
+const completionTitle = document.querySelector("#completionTitle");
+const completionMessage = document.querySelector("#completionMessage");
+const finalScoreNode = document.querySelector("#finalScore");
+const finalLevelNode = document.querySelector("#finalLevel");
+const finalTrophiesNode = document.querySelector("#finalTrophies");
+const highscoreForm = document.querySelector("#highscoreForm");
+const playerNameInput = document.querySelector("#playerName");
+const highscoreList = document.querySelector("#highscoreList");
+const completionRestartBtn = document.querySelector("#completionRestartBtn");
 
 const rows = BASE_MAZE_TEMPLATE.length;
 const cols = BASE_MAZE_TEMPLATE[0].length;
@@ -276,6 +291,7 @@ const state = {
   level: 1,
   score: 0,
   lives: 3,
+  trophies: 0,
   shotsRemaining: SHOTS_PER_LEVEL,
   levelConfig: LEVEL_DEFINITIONS[0],
   maze: LEVEL_MAZES[0],
@@ -292,6 +308,7 @@ const state = {
   projectileAccumulator: 0,
   mouthTime: 0,
   message: "Ready",
+  highscoreSubmitted: false,
 };
 
 function configureCanvas() {
@@ -355,11 +372,27 @@ function resetGame() {
   state.level = 1;
   state.score = 0;
   state.lives = 3;
+  state.trophies = 0;
   state.shotsRemaining = SHOTS_PER_LEVEL;
   state.inactiveGhostNames = new Set();
   state.message = "Ready";
+  state.highscoreSubmitted = false;
   loadCurrentLevel();
   updateHud();
+}
+
+function completeLevel() {
+  state.lives += 1;
+  state.trophies += 1;
+  state.projectiles = [];
+  state.powerTimer = 0;
+
+  if (state.level >= MAX_LEVEL) {
+    setMode("won", `All ${MAX_LEVEL} levels cleared - final trophy earned, +1 life`);
+    return;
+  }
+
+  setMode("level-clear", `Level ${state.level} cleared - trophy earned, +1 life`);
 }
 
 function nextLevel() {
@@ -415,18 +448,158 @@ function getStartButtonLabel() {
   return "Start";
 }
 
+function isFinished() {
+  return state.mode === "lost" || state.mode === "won";
+}
+
+function loadHighscores() {
+  try {
+    const savedScores = JSON.parse(localStorage.getItem(HIGHSCORE_KEY) || "[]");
+
+    if (!Array.isArray(savedScores)) {
+      return [];
+    }
+
+    return savedScores
+      .filter((entry) => entry && typeof entry.name === "string")
+      .map((entry) => ({
+        name: entry.name.slice(0, 16) || "Player",
+        score: Number(entry.score) || 0,
+        level: Number(entry.level) || 1,
+        trophies: Number(entry.trophies) || 0,
+        completed: Boolean(entry.completed),
+        date: typeof entry.date === "string" ? entry.date : "",
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function saveHighscores(highscores) {
+  try {
+    localStorage.setItem(HIGHSCORE_KEY, JSON.stringify(highscores));
+    return true;
+  } catch {
+    state.message = "Highscores unavailable";
+    return false;
+  }
+}
+
+function sortHighscores(highscores) {
+  return highscores
+    .sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+
+      if (b.level !== a.level) {
+        return b.level - a.level;
+      }
+
+      return b.trophies - a.trophies;
+    })
+    .slice(0, MAX_HIGHSCORES);
+}
+
+function renderHighscores() {
+  highscoreList.replaceChildren();
+
+  const highscores = loadHighscores();
+
+  if (highscores.length === 0) {
+    const emptyItem = document.createElement("li");
+    emptyItem.className = "highscore-empty";
+    emptyItem.textContent = "No scores yet";
+    highscoreList.append(emptyItem);
+    return;
+  }
+
+  for (const entry of highscores) {
+    const item = document.createElement("li");
+    const name = document.createElement("span");
+    const score = document.createElement("span");
+
+    name.className = "highscore-name";
+    score.className = "highscore-score";
+    name.textContent = `${entry.name} - L${entry.level}, ${entry.trophies} trophies`;
+    score.textContent = entry.score.toLocaleString();
+
+    item.append(name, score);
+    highscoreList.append(item);
+  }
+}
+
+function saveCurrentHighscore(playerName) {
+  if (!isFinished() || state.highscoreSubmitted) {
+    return;
+  }
+
+  const name = playerName.trim().slice(0, 16) || "Player";
+  const entry = {
+    name,
+    score: state.score,
+    level: state.level,
+    trophies: state.trophies,
+    completed: state.mode === "won",
+    date: new Date().toISOString(),
+  };
+  const highscores = sortHighscores([...loadHighscores(), entry]);
+
+  if (saveHighscores(highscores)) {
+    state.highscoreSubmitted = true;
+    state.message = "Highscore saved";
+    playerNameInput.value = "";
+  }
+
+  renderHighscores();
+  updateHud();
+}
+
+function updateCompletionScreen() {
+  const finished = isFinished();
+  const wasHidden = completionScreen.hidden;
+
+  completionScreen.hidden = !finished;
+
+  if (!finished) {
+    return;
+  }
+
+  const completedGame = state.mode === "won";
+
+  completionEyebrow.textContent = completedGame ? "Victory" : "Game over";
+  completionTitle.textContent = completedGame ? "All levels cleared" : "Game over";
+  completionMessage.textContent = state.highscoreSubmitted
+    ? "Highscore saved."
+    : completedGame
+      ? `You cleared all ${MAX_LEVEL} levels, earned ${state.trophies} trophies, and finished with ${state.lives} lives.`
+      : `You reached level ${state.level}. Enter your name for the highscore list.`;
+  finalScoreNode.textContent = state.score.toLocaleString();
+  finalLevelNode.textContent = String(state.level);
+  finalTrophiesNode.textContent = String(state.trophies);
+  highscoreForm.hidden = state.highscoreSubmitted;
+  renderHighscores();
+
+  if (wasHidden && !state.highscoreSubmitted) {
+    window.setTimeout(() => playerNameInput.focus(), 0);
+  }
+}
+
 function updateHud() {
   scoreNode.textContent = state.score.toLocaleString();
   levelNode.textContent = String(state.level);
   livesNode.textContent = String(state.lives);
   pelletsNode.textContent = String(state.pelletCount);
   shotsNode.textContent = String(state.shotsRemaining);
+  trophiesNode.textContent = String(state.trophies);
   powerNode.textContent = formatPowerCountdown();
   powerNode.classList.toggle("active", state.powerTimer > 0);
   messageNode.textContent = getHudMessage();
   startBtn.textContent = getStartButtonLabel();
   pauseBtn.disabled = state.mode !== "playing" && state.mode !== "paused";
   shootBtn.disabled = state.mode !== "playing" || state.shotsRemaining <= 0;
+  touchShootBtn.disabled = shootBtn.disabled;
+  updateCompletionScreen();
 }
 
 function normalizeX(x) {
@@ -550,11 +723,7 @@ function eatCurrentTile() {
   }
 
   if (state.pelletCount === 0) {
-    if (state.level >= MAX_LEVEL) {
-      setMode("won", `All ${MAX_LEVEL} levels cleared`);
-    } else {
-      setMode("level-clear", `Level ${state.level} cleared`);
-    }
+    completeLevel();
   }
 }
 
@@ -929,6 +1098,66 @@ function drawGhost(ghost) {
   ctx.fill();
 }
 
+function drawTrophy(centerX, centerY, scale = 1) {
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.scale(scale, scale);
+  ctx.fillStyle = "#ffd642";
+  ctx.strokeStyle = "#ffe99a";
+  ctx.lineWidth = 3;
+
+  drawRoundedRect(-34, -38, 68, 44, 7);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(-33, -27);
+  ctx.bezierCurveTo(-64, -29, -63, 13, -29, 10);
+  ctx.lineTo(-29, -2);
+  ctx.bezierCurveTo(-45, 0, -46, -17, -33, -17);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(33, -27);
+  ctx.bezierCurveTo(64, -29, 63, 13, 29, 10);
+  ctx.lineTo(29, -2);
+  ctx.bezierCurveTo(45, 0, 46, -17, 33, -17);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  drawRoundedRect(-8, 5, 16, 26, 4);
+  ctx.fill();
+  ctx.stroke();
+
+  drawRoundedRect(-36, 28, 72, 15, 5);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+function getOverlayLines() {
+  if (state.mode === "level-clear") {
+    return [`Level ${state.level} cleared`, "Trophy earned - +1 life", "Start loads next level"];
+  }
+
+  if (state.mode === "won") {
+    return [`All ${MAX_LEVEL} levels cleared`, "Final trophy earned - +1 life", "Enter your highscore"];
+  }
+
+  if (state.mode === "lost") {
+    return ["Game over", "Enter your highscore"];
+  }
+
+  if (state.mode === "paused") {
+    return ["Paused", "Start resumes"];
+  }
+
+  return [state.message];
+}
+
 function drawOverlay() {
   if (state.mode === "playing") {
     return;
@@ -936,20 +1165,28 @@ function drawOverlay() {
 
   ctx.fillStyle = "rgba(5, 6, 11, 0.58)";
   ctx.fillRect(0, 0, boardWidth, boardHeight);
-  ctx.fillStyle = "#f7f5ec";
-  ctx.font = "800 34px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(state.message, boardWidth / 2, boardHeight / 2 - 8);
+  const hasTrophy = state.mode === "level-clear" || state.mode === "won";
+  const lines = getOverlayLines();
+  const textY = hasTrophy ? boardHeight / 2 + 8 : boardHeight / 2 - 8;
 
-  if (state.mode === "level-clear") {
-    ctx.font = "700 16px system-ui, sans-serif";
-    ctx.fillText("Start loads next level", boardWidth / 2, boardHeight / 2 + 30);
+  if (hasTrophy) {
+    drawTrophy(boardWidth / 2, boardHeight / 2 - 76, 0.9);
   }
 
+  ctx.fillStyle = "#f7f5ec";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  lines.forEach((line, index) => {
+    ctx.font = index === 0 ? "800 30px system-ui, sans-serif" : "700 16px system-ui, sans-serif";
+    ctx.fillStyle = index === 0 ? "#f7f5ec" : "#ffe99a";
+    ctx.fillText(line, boardWidth / 2, textY + index * 28);
+  });
+
   if (state.mode === "won") {
-    ctx.font = "700 16px system-ui, sans-serif";
-    ctx.fillText("Start restarts", boardWidth / 2, boardHeight / 2 + 30);
+    ctx.font = "700 14px system-ui, sans-serif";
+    ctx.fillStyle = "#aaa8b8";
+    ctx.fillText("Game complete", boardWidth / 2, textY + lines.length * 28 + 8);
   }
 }
 
@@ -1042,7 +1279,14 @@ function bindControls() {
   startBtn.addEventListener("click", startOrResume);
   pauseBtn.addEventListener("click", togglePause);
   shootBtn.addEventListener("click", shoot);
+  touchShootBtn.addEventListener("click", shoot);
   restartBtn.addEventListener("click", restart);
+  completionRestartBtn.addEventListener("click", restart);
+
+  highscoreForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    saveCurrentHighscore(playerNameInput.value);
+  });
 
   document.querySelectorAll("[data-dir]").forEach((button) => {
     button.addEventListener("click", () => {

@@ -14,6 +14,7 @@
         <div class="touch-pad" aria-label="Touch controls">
           <button class="touch-button touch-up" type="button" data-dir="up" aria-label="Move up" title="Move up">^</button>
           <button class="touch-button touch-left" type="button" data-dir="left" aria-label="Move left" title="Move left">&lt;</button>
+          <button class="touch-button touch-shoot" type="button" id="touchShootBtn" aria-label="Shoot" title="Shoot">Shoot</button>
           <button class="touch-button touch-down" type="button" data-dir="down" aria-label="Move down" title="Move down">v</button>
           <button class="touch-button touch-right" type="button" data-dir="right" aria-label="Move right" title="Move right">&gt;</button>
         </div>
@@ -50,6 +51,10 @@
             <dt>Power</dt>
             <dd id="power">Ready</dd>
           </div>
+          <div>
+            <dt>Trophies</dt>
+            <dd id="trophies">0</dd>
+          </div>
         </dl>
 
         <p class="state-message" id="message">Ready</p>
@@ -62,6 +67,49 @@
         </div>
       </aside>
     </main>
+
+    <section class="completion-screen" id="completionScreen" aria-label="Game complete and highscores" hidden>
+      <div class="completion-card">
+        <div class="completion-heading">
+          <div class="completion-trophy" aria-hidden="true"></div>
+          <div>
+            <p class="eyebrow" id="completionEyebrow">Game over</p>
+            <h2 id="completionTitle">Final score</h2>
+            <p class="completion-copy" id="completionMessage">Enter your name for the highscore list.</p>
+          </div>
+        </div>
+
+        <dl class="completion-stats">
+          <div>
+            <dt>Score</dt>
+            <dd id="finalScore">0</dd>
+          </div>
+          <div>
+            <dt>Level</dt>
+            <dd id="finalLevel">1</dd>
+          </div>
+          <div>
+            <dt>Trophies</dt>
+            <dd id="finalTrophies">0</dd>
+          </div>
+        </dl>
+
+        <form class="highscore-form" id="highscoreForm">
+          <label for="playerName">Player name</label>
+          <div class="highscore-entry">
+            <input id="playerName" name="playerName" type="text" maxlength="16" autocomplete="name" />
+            <button class="action-button primary" type="submit">Save</button>
+          </div>
+        </form>
+
+        <div class="highscores">
+          <h3>Highscores</h3>
+          <ol id="highscoreList"></ol>
+        </div>
+
+        <button class="action-button" type="button" id="completionRestartBtn">Play again</button>
+      </div>
+    </section>
 
     <script src="index.js"></script>
   </body>
