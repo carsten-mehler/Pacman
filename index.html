@@ -65,6 +65,11 @@
           <button class="action-button" type="button" id="shootBtn">Shoot</button>
           <button class="action-button" type="button" id="restartBtn">Restart</button>
         </div>
+
+        <section class="highscores highscore-panel" aria-label="Highscores">
+          <h2>Highscores</h2>
+          <ol id="sideHighscoreList" data-highscore-list></ol>
+        </section>
       </aside>
     </main>
 
@@ -104,7 +109,7 @@
 
         <div class="highscores">
           <h3>Highscores</h3>
-          <ol id="highscoreList"></ol>
+          <ol id="highscoreList" data-highscore-list></ol>
         </div>
 
         <button class="action-button" type="button" id="completionRestartBtn">Play again</button>

@@ -278,7 +278,7 @@ const finalLevelNode = document.querySelector("#finalLevel");
 const finalTrophiesNode = document.querySelector("#finalTrophies");
 const highscoreForm = document.querySelector("#highscoreForm");
 const playerNameInput = document.querySelector("#playerName");
-const highscoreList = document.querySelector("#highscoreList");
+const highscoreLists = document.querySelectorAll("[data-highscore-list]");
 const completionRestartBtn = document.querySelector("#completionRestartBtn");
 
 const rows = BASE_MAZE_TEMPLATE.length;
@@ -501,31 +501,41 @@ function sortHighscores(highscores) {
     .slice(0, MAX_HIGHSCORES);
 }
 
-function renderHighscores() {
-  highscoreList.replaceChildren();
-
-  const highscores = loadHighscores();
-
-  if (highscores.length === 0) {
-    const emptyItem = document.createElement("li");
-    emptyItem.className = "highscore-empty";
-    emptyItem.textContent = "No scores yet";
-    highscoreList.append(emptyItem);
-    return;
+function createHighscoreItem(entry) {
+  if (!entry) {
+    const item = document.createElement("li");
+    item.className = "highscore-empty";
+    item.textContent = "No scores yet";
+    return item;
   }
 
-  for (const entry of highscores) {
-    const item = document.createElement("li");
-    const name = document.createElement("span");
-    const score = document.createElement("span");
+  const item = document.createElement("li");
+  const name = document.createElement("span");
+  const score = document.createElement("span");
 
-    name.className = "highscore-name";
-    score.className = "highscore-score";
-    name.textContent = `${entry.name} - L${entry.level}, ${entry.trophies} trophies`;
-    score.textContent = entry.score.toLocaleString();
+  name.className = "highscore-name";
+  score.className = "highscore-score";
+  name.textContent = `${entry.name} - L${entry.level}, ${entry.trophies} trophies`;
+  score.textContent = entry.score.toLocaleString();
 
-    item.append(name, score);
-    highscoreList.append(item);
+  item.append(name, score);
+  return item;
+}
+
+function renderHighscores() {
+  const highscores = loadHighscores();
+
+  for (const list of highscoreLists) {
+    list.replaceChildren();
+
+    if (highscores.length === 0) {
+      list.append(createHighscoreItem());
+      continue;
+    }
+
+    for (const entry of highscores) {
+      list.append(createHighscoreItem(entry));
+    }
   }
 }
 
@@ -1300,4 +1310,5 @@ function bindControls() {
 configureCanvas();
 resetGame();
 bindControls();
+renderHighscores();
 requestAnimationFrame(frame);

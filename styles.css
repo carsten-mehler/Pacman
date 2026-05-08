@@ -336,6 +336,11 @@ h2 {
   line-height: 0.95;
 }
 
+.side-panel h2 {
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
 h3 {
   font-size: 1rem;
 }
@@ -414,6 +419,10 @@ h3 {
 .highscores {
   display: grid;
   gap: 10px;
+}
+
+.highscore-panel {
+  padding-top: 4px;
 }
 
 .highscores ol {
